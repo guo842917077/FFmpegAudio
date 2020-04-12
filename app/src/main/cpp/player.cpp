@@ -1,6 +1,9 @@
 #include <jni.h>
 #include <string>
 #include <android/log.h>
+#include <android/native_window_jni.h>
+#include "control_ffmpeg.h"
+#include "java_call_helper.h"
 
 #define LOGI(FORMAT, ...) __android_log_print(ANDROID_LOG_INFO,"wangyi",FORMAT,##__VA_ARGS__);
 #define LOGE(FORMAT, ...) __android_log_print(ANDROID_LOG_ERROR,"wangyi",FORMAT,##__VA_ARGS__);
@@ -118,4 +121,68 @@ Java_com_baidu_crazyorange_ffmpegaudio_Mp3Player_sound(JNIEnv *env, jobject inst
     avformat_close_input(&formatContext);
     env->ReleaseStringUTFChars(input_, input);
     env->ReleaseStringUTFChars(output_, output);
+}
+
+
+ANativeWindow *window = 0;
+ControlFFmpeg *controlFFmpeg;
+JavaCallHelper *javaCallHelper;
+
+// 在子线程如果想要调用 java 函数，就必须先将 native 的线程绑定到 jvm 引擎的实例上
+JavaVM *javaVM = NULL;
+/**
+ * 这个函数会被主动调用
+ *
+ * 这里是用来获取 JavaVM 对象
+ * @param vm
+ * @param reserved
+ * @return
+ */
+JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
+    javaVM = vm;
+    return JNI_VERSION_1_4;
+}
+
+/**
+ * 音视频同步，加入了控制层的概念
+ * OpenSLES 播放喇叭的库
+ */
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_baidu_crazyorange_ffmpegaudio_Mp3Player_play(JNIEnv *env, jobject instance,
+                                                      jstring input_) {
+    const char *input = env->GetStringUTFChars(input_, 0);
+
+    // 播放音频
+
+    env->ReleaseStringUTFChars(input_, input);
+}
+
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_baidu_crazyorange_ffmpegaudio_Mp3Player_native_1prepare(JNIEnv *env, jobject instance,
+                                                                 jstring dataSource_) {
+    const char *dataSource = env->GetStringUTFChars(dataSource_, 0);
+    javaCallHelper = new JavaCallHelper(javaVM, env, instance);
+    controlFFmpeg = new ControlFFmpeg(javaCallHelper, dataSource);
+    controlFFmpeg->prepare();
+
+    env->ReleaseStringUTFChars(dataSource_, dataSource);
+}
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_baidu_crazyorange_ffmpegaudio_Mp3Player_native_1start(JNIEnv *env, jobject instance) {
+
+    // TODO
+
+}
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_baidu_crazyorange_ffmpegaudio_Mp3Player_native_1set_1surface(JNIEnv *env, jobject instance,
+                                                                      jobject surface) {
+
+    // TODO
+    window = ANativeWindow_fromSurface(env, surface);
+
 }
